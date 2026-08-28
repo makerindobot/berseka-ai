@@ -3,10 +3,11 @@
 Bot Telegram untuk mengumpulkan foto tong sampah dari 32 kelompok mahasiswa
 KKN di Kecamatan Coblong, sebagai data lapangan untuk proyek **BERSEKA AI**.
 
-Nama bot Telegram: **`@makerindobot`** — ini bot Telegram **BARU**, dibuat
+Nama bot Telegram: **`@bersekabot`** — ini bot Telegram **BARU**, dibuat
 dari nol via @BotFather khusus untuk keperluan ini. Bukan reuse token/akses
 dari sistem lain (termasuk bukan akun GitHub bot `makerindobot` yang sudah
-ada — itu konteks berbeda).
+ada — itu konteks berbeda; nama sempat salah ditulis `@makerindobot` di
+draf awal dokumen ini, sudah dikoreksi 28 Agustus 2026).
 
 ---
 
@@ -17,7 +18,8 @@ Bot **sudah aktif** di gateway sejak 28 Agustus 2026, berjalan sebagai `berseka-
 **Catatan perubahan dari desain awal (ditemukan saat deployment):**
 - Runtime dipindah dari `/home/maker/.../collector-bot` ke **`/opt/berseka-collector-bot`**. Sebab: `ProtectHome=true` di systemd menyembunyikan seluruh `/home` dari proses sandboxed, sehingga user `berseka-bot` tidak bisa `chdir` ke folder manapun di bawah `/home` meski ACL diberikan. Menaruh runtime di `/opt/` (di luar `/home`) adalah pola standar untuk service Linux dan menjaga `ProtectHome=true` tetap aktif penuh tanpa pengecualian.
 - Opsi `MemoryDenyWriteExecute=true` **dihapus** dari service file. Sebab: V8 (mesin JS Node.js) butuh JIT compilation yang menulis+mengeksekusi memori secara dinamis — opsi ini menyebabkan core dump (`SIGTRAP`) setiap kali Node mencoba compile kode. Ini trade-off yang diketahui untuk runtime dengan JIT (Node/V8, Java, dll); seluruh proteksi sandboxing lain (`ProtectSystem=strict`, `NoNewPrivileges`, `CapabilityBoundingSet=` kosong, dll) tetap aktif.
-- Source code kanonis tetap di repo Git ini (`collector-bot/`); folder `/opt/berseka-collector-bot` adalah *deployment copy* yang perlu di-sync ulang manual (`sudo cp -r`) setiap kali ada perubahan kode, sampai dibuatkan skrip deploy otomatis.
+- Source code kanonis tetap di repo Git ini (`collector-bot/`); folder `/opt/berseka-collector-bot` adalah *deployment copy*. **Update 28 Agustus 2026: skrip sync otomatis sudah dibuat** (`collector-bot/deploy.sh`, `sudo bash collector-bot/deploy.sh`) — menggantikan `sudo cp -r` manual yang sebelumnya jadi gap dokumentasi (risiko drift diam-diam antara source & runtime kalau lupa sync). **WAJIB jalankan skrip ini setiap ada perubahan kode di `collector-bot/`**, jangan edit `/opt/berseka-collector-bot` langsung.
+- **Bug ditemukan & diperbaiki 28 Agustus 2026: `Polling error: EFATAL: AggregateError` berulang.** Root cause: VPS ini punya AAAA record (IPv6) yang di-resolve tapi network IPv6-nya *unreachable* (provider tidak route IPv6 dengan benar), dikombinasikan dengan Node.js v22+ yang defaultnya mengaktifkan `autoSelectFamily` (algoritma Happy Eyeballs — mencoba IPv6 & IPv4 bersamaan). Setiap request ke Telegram API mencoba IPv6 dulu, gagal, di-retry ke IPv4, dan kegagalan IPv6 yang berulang kadang dibungkus jadi `AggregateError` yang bocor ke `polling_error` handler. **BUKAN bug di kode bot** (`bot.js` tidak diubah) — diperbaiki di level systemd unit dengan menambahkan `Environment=NODE_OPTIONS=--dns-result-order=ipv4first --no-network-family-autoselection` ke `/etc/systemd/system/berseka-collector-bot.service`, memaksa Node.js selalu pakai IPv4 langsung tanpa race ke IPv6. Diverifikasi stabil (0 error) selama pemantauan langsung >3 menit setelah fix.
 
 ## Security & Isolation (baca ini dulu)
 
@@ -150,7 +152,10 @@ kelompok & jenis tong, kirim foto. Cek `uploads/` dan `data/manifest.jsonl`.
 
 ### 6. Deploy sebagai systemd service
 
+**Setup awal (sekali saja):**
 ```bash
+sudo mkdir -p /opt/berseka-collector-bot
+sudo bash collector-bot/deploy.sh   # sync kode + install deps + set ownership
 sudo cp berseka-collector-bot.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable berseka-collector-bot
@@ -159,12 +164,26 @@ sudo systemctl status berseka-collector-bot
 journalctl -u berseka-collector-bot -f
 ```
 
+**Setiap ada perubahan kode setelahnya** (JANGAN edit `/opt/berseka-collector-bot` langsung):
+```bash
+sudo bash collector-bot/deploy.sh
+```
+Skrip ini otomatis: sync file (rsync, exclude `node_modules`/`.env`/`uploads`/`data`),
+`npm install --production` di lokasi deploy, perbaiki ownership ke user
+`berseka-bot`, lalu restart service & verifikasi `active (running)`.
+
 > **Catatan:** service ini dibuat untuk berjalan sebagai user Linux terpisah
 > `berseka-bot` (dibuat via `sudo useradd --system --create-home --shell
 > /usr/sbin/nologin berseka-bot`, sudah dilakukan). User ini diberi akses
 > baca ke folder `collector-bot/` via POSIX ACL
 > (`setfacl -R -m u:berseka-bot:rx collector-bot/`) dan akses baca-tulis ke
 > `uploads/` & `data/`. Pastikan permission ini masih benar sebelum start.
+>
+> **Catatan jaringan (WAJIB untuk VPS dengan IPv6 bermasalah):** jika muncul
+> `Polling error: EFATAL: AggregateError` berulang, kemungkinan besar VPS
+> punya AAAA record IPv6 yang tidak reachable — lihat catatan di bagian
+> "Status Deployment" di atas. Fix-nya ada di `Environment=NODE_OPTIONS=...`
+> pada `.service` file, bukan di kode bot.
 
 ---
 
