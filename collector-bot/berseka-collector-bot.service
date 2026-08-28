@@ -10,7 +10,7 @@ Group=berseka-bot
 WorkingDirectory=/opt/berseka-collector-bot
 Environment=HOME=/opt/berseka-collector-bot
 Environment=NODE_ENV=production
-Environment=NODE_OPTIONS=--dns-result-order=ipv4first --no-network-family-autoselection
+Environment="NODE_OPTIONS=--dns-result-order=ipv4first --no-network-family-autoselection"
 EnvironmentFile=/opt/berseka-collector-bot/.env
 ExecStart=/usr/bin/node /opt/berseka-collector-bot/src/bot.js
 Restart=always

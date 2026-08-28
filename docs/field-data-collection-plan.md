@@ -73,6 +73,8 @@ Berbeda dari pesan ke Pak Agus, pesan ini **harus detail dan jelas** karena maha
 | Tahap | Status |
 |-------|--------|
 | 1. Kirim pesan ke Pak Agus | 🟢 SELESAI — Daffa sudah kirim (28 Agustus 2026) |
-| 2. Bangun & deploy bot Telegram (isolated) | 🟢 SELESAI — `@bersekabot` live di gateway, storage mode `local` (sementara, belum R2), bug parsing ID kelompok sudah diperbaiki |
+| 2. Bangun & deploy bot Telegram (isolated) | 🟢 SELESAI — `@bersekabot` live di gateway, storage mode `local` (sementara, belum R2), bug parsing ID kelompok sudah diperbaiki, bug polling EFATAL (IPv6) sudah diperbaiki 28 Agustus |
 | 3. Kirim pesan ke mahasiswa | 🟢 SELESAI — Pak Agus sudah teruskan pesan ke 32 kelompok KKN |
-| 4. Pengumpulan foto 32 kelompok | 🟡 BERLANGSUNG — menunggu foto masuk dari mahasiswa via bot |
+| 4. Pengumpulan foto 32 kelompok | 🟡 BERLANGSUNG — **2 foto sudah masuk** per 28 Agustus 14:37 WIB (Kelompok 1 Sekeloa, Kelompok 11 Sadang Serang, keduanya jenis anorganik), diverifikasi langsung di `data-storage/manifest.jsonl` + file JPEG tersimpan (bukan cuma klaim UI). Masih jauh dari target minimal 10-15 foto/kelompok × 32 kelompok. |
+
+**Catatan teknis penting:** bot sempat mengalami downtime fungsional (error `Polling error: EFATAL: AggregateError` berulang) dari sekitar 28 Agustus 11:28 WIB sampai diperbaiki ~14:31 WIB — periode ini kemungkinan ada foto yang GAGAL terkirim mahasiswa tanpa mereka sadari (bot tidak merespons). **Perlu follow-up ke koordinator/mahasiswa**: jika ada yang mencoba kirim foto di rentang waktu tersebut dan tidak dapat konfirmasi ✅, mohon kirim ulang.
