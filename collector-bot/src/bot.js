@@ -180,6 +180,23 @@ function main() {
       const buffer = Buffer.from(arrayBuffer);
 
       const timestampIso = new Date().toISOString();
+      // Format tampilan untuk pesan ke user: WIB (UTC+7) eksplisit, BUKAN
+      // ISO/UTC mentah - mahasiswa awam bisa salah kira jam UTC = jam lokal
+      // (insiden nyata 28 Agustus 2026: PM sempat salah lapor "07:37 WIB"
+      // padahal itu 07:37 UTC = 14:37 WIB, karena label zona waktu tidak
+      // eksplisit). timestamp_iso (UTC) TETAP disimpan apa adanya di
+      // manifest untuk konsistensi data/audit - hanya tampilan ke user
+      // yang dikonversi ke WIB.
+      const timestampWibDisplay = new Intl.DateTimeFormat('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }).format(new Date(timestampIso));
 
       const result = await storage.putPhoto({
         buffer,
@@ -207,7 +224,7 @@ function main() {
 
       await bot.sendMessage(
         chatId,
-        `✅ Foto tersimpan!\n\nKelompok: *${session.groupLabel}*\nJenis: *${JENIS_TONG[session.jenisTong].label}*\nWaktu: ${timestampIso}\n\n` +
+        `✅ Foto tersimpan!\n\nKelompok: *${session.groupLabel}*\nJenis: *${JENIS_TONG[session.jenisTong].label}*\nWaktu: ${timestampWibDisplay} WIB\n\n` +
           'Boleh kirim foto lagi (jenis tong yang sama), atau ketik /mulai untuk ganti kelompok/jenis.',
         { parse_mode: 'Markdown' }
       );
