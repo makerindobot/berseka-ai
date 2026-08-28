@@ -1,0 +1,21 @@
+{
+  "name": "berseka-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BERSEKA AI - Backend Node.js (Adapter Pattern IWasteAiAdapter) - Backlog 7. Integrasi ke sistem monitoring KKN & tata kelola sampah.",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2"
+  },
+  "license": "UNLICENSED"
+}

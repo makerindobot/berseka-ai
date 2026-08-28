@@ -112,14 +112,16 @@ Sesuai poin #14 brief: kamera buram, tidak stabil, jarak tidak konsisten.
 
 ## BACKLOG 7 — Backend Node.js Integration (Adapter Pattern)
 **Role:** Dimas + Raka
-**Status:** 🔴
+**Status:** 🟡 Backend Node.js + Adapter Pattern selesai & teruji end-to-end sungguhan (Backend → FastAPI Backlog 6 → Mock AI → SQLite → response), 15/15 test lulus. Integrasi Raka (frontend, Backlog 8) belum dimulai. Kode: `backend/` (lihat `backend/README.md`).
 
-- [ ] Implementasi `IWasteAiAdapter` sesuai interface existing yang diberikan Daffa
-- [ ] Integrasi ke sistem monitoring KKN & tata kelola sampah (dua modul utama sesuai brief)
-- [ ] Skema database untuk histori scan per warga/tong sampah/waktu (pagi/sore terjadwal)
-- [ ] Validasi jadwal scan otomatis (sistem menentukan waktu pagi/sore)
+- [x] Implementasi `IWasteAiAdapter` — **CATATAN PENTING**: tidak ditemukan dokumen interface asli terpisah dari Daffa di repo saat Backlog 7 dimulai, jadi Dimas menyusun kontrak ini sendiri berdasarkan skema `/predict` Backlog 6 (`backend/src/adapters/IWasteAiAdapter.js`). **Perlu review & sign-off Daffa** sebelum dianggap final, terutama method `analyzeImage()`/`healthCheck()` dan bentuk `WasteAiPredictionResult`. Implementasi: `FastApiWasteAiAdapter` (panggil Model Serving API sungguhan) + `MockWasteAiAdapter` (testing tanpa FastAPI) + factory berbasis env var.
+- [x] Integrasi ke sistem monitoring tata kelola sampah — endpoint `POST /api/scan` (analisis 1 foto → simpan histori → response), `GET /api/scans`, `GET /api/compliance/:kelompokKknId`. Modul monitoring KKN (progres mahasiswa) **belum dikerjakan** — di luar scope sesi ini, brief hanya eksplisit soal modul tata kelola sampah.
+- [x] Skema database histori scan (`backend/src/db/schema.js`, SQLite via `node:sqlite` bawaan Node — sengaja tanpa native addon/DB server terpisah, hemat RAM gateway) — tabel `scans` (per warga/tong/waktu) + `scan_windows` (jadwal pagi/sore, **jam default 05:00-09:00 & 15:00-18:00 indikatif, perlu konfirmasi Daffa** untuk jam pasti program Coblong).
+- [x] Validasi jadwal scan otomatis pagi/sore — `backend/src/lib/scanWindow.js`, `determineScanWindow()` menentukan window aktif berdasarkan waktu request; diuji dgn kasus batas tepat (inclusive boundary), di luar & di dalam rentang.
 
-**QC 7 (Sari):** Uji integrasi end-to-end: foto masuk → model → backend → tersimpan → dapat ditarik untuk laporan kepatuhan.
+**QC 7 (Sari):** Uji integrasi end-to-end: foto masuk → model → backend → tersimpan → dapat ditarik untuk laporan kepatuhan. **Sudah diverifikasi sungguhan** (bukan cuma test harness/mock): FastAPI Backlog 6 & backend Node.js dijalankan bersamaan (`WASTE_AI_ADAPTER=fastapi`), foto dikirim via curl ke `POST /api/scan`, hasil tersimpan di SQLite, diambil ulang via `GET /api/scans` & `GET /api/compliance/:id` — data konsisten end-to-end (3 scan test, avgOrganikPercent terhitung benar 97.53%).
+
+**Catatan jujur untuk QC:** endpoint `POST /api/scan` saat ini TIDAK ada autentikasi/otorisasi — siapa saja bisa hit endpoint ini, perlu diamankan sebelum Backlog 11 (deploy produksi). `annotatedImageBase64` belum diupload ke object storage (baru flag di DB, base64 penuh tidak disimpan permanen agar tidak membebani disk gateway) — perlu iterasi lanjutan.
 
 ---
 

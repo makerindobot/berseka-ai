@@ -25,7 +25,7 @@ Proyek ini diinisiasi oleh **Daffa Jaya Perkasa** dari PT Makerindo Prima Solusi
 
 - **Model AI:** YOLOv8 (object detection), dilatih menggunakan Kaggle Notebook (GPU cloud)
 - **Model Serving:** FastAPI (HTTP `/predict` + WebSocket `/ws/predict`)
-- **Backend:** Node.js dengan pola Adapter (`IWasteAiAdapter`)
+- **Backend:** Node.js dengan pola Adapter (`IWasteAiAdapter`) — implementasi di `backend/`, Backlog 7
 - **Frontend:** Dashboard monitoring performa AI & uji model
 - **Dataset:** TACO (Trash Annotations in Context) + kurasi tambahan, lihat [`docs/dataset/`](docs/dataset/)
 
@@ -47,6 +47,10 @@ berseka-ai/
 │   ├── routes/
 │   ├── schemas/
 │   └── services/
+├── backend/            # Backend Node.js — Adapter Pattern (IWasteAiAdapter), Backlog 7
+│   ├── src/adapters/
+│   ├── src/db/
+│   └── src/routes/
 ├── web/                # Dashboard monitoring (frontend)
 ├── tests/              # Unit & integration tests
 ├── docs/               # Dokumentasi teknis (arsitektur, dataset, keputusan, API reference)
