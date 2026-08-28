@@ -52,11 +52,11 @@ function getSession(chatId) {
   return sessions.get(chatId);
 }
 
-function chunkGroupsIntoRows(groups, perRow = 4) {
+function chunkGroupsIntoRows(groups, perRow = 2) {
   const rows = [];
   for (let i = 0; i < groups.length; i += perRow) {
     const row = groups.slice(i, i + perRow).map((g) => ({
-      text: String(g.id),
+      text: g.label,
       callback_data: `group:${g.id}`,
     }));
     rows.push(row);
