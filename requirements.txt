@@ -17,3 +17,10 @@ pillow>=10.0.0
 matplotlib>=3.8.0
 seaborn>=0.13.0
 tqdm>=4.66.0
+
+# --- Model Serving API (Backlog 6) ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+websockets>=12.0
+httpx>=0.27.0

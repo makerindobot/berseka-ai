@@ -67,16 +67,18 @@ Sesuai arahan atasan Daffa: harus ada validasi antara "bacaan kamera+AI" vs peng
 
 ## BACKLOG 4 — Antisipasi Kondisi Lapangan Non-Ideal
 **Role:** Dimas
-**Status:** 🔴
+**Status:** 🟡 Modul validasi kualitas foto selesai + 9 unit test lulus (verifikasi lokal). BELUM diverifikasi dgn foto lapangan asli, BELUM diintegrasikan ke endpoint (Backlog 6), item confidence & augmentation training belum dikerjakan di sesi ini. Detail: `docs/architecture/image-quality-gate.md`
 
 Sesuai poin #14 brief: kamera buram, tidak stabil, jarak tidak konsisten.
 
-- [ ] Deteksi blur (Laplacian variance / sharpness threshold) → tolak foto buram sebelum inference
-- [ ] Deteksi foto gelap/pencahayaan buruk → minta foto ulang
-- [ ] Validasi confidence < 40% → error `NO_WASTE_DETECTED` (sudah sesuai contract)
-- [ ] Data augmentation saat training: motion blur, brightness variation, rotasi ringan, agar model robust terhadap kondisi lapangan nyata
+- [x] Deteksi blur (Laplacian variance / sharpness threshold) → tolak foto buram sebelum inference — `src/preprocessing/image_quality_check.py`, threshold 100 (verifikasi empiris di `docs/architecture/image-quality-gate.md` §2.3), diuji `tests/unit/test_image_quality_check.py` (PASS)
+- [x] Deteksi foto gelap/pencahayaan buruk → minta foto ulang — implementasi sama (brightness histogram + rasio clipped-pixel, threshold 40–215/255), diuji & PASS
+- [x] Deteksi resolusi terlalu rendah (item tambahan di luar checklist asli, ditambahkan karena ada di scope tugas) — min sisi terpendek 320px, diuji & PASS
+- [ ] Validasi confidence < 40% → error `NO_WASTE_DETECTED` (sudah sesuai contract) — **belum dikerjakan**, ini logic di sisi model/endpoint (Backlog 6), bukan modul pre-validasi kualitas foto
+- [ ] Data augmentation saat training: motion blur, brightness variation, rotasi ringan, agar model robust terhadap kondisi lapangan nyata — **belum dikerjakan di sesi ini**; augmentasi umum untuk training sudah ada di `src/preprocessing/augmentation.py` (Backlog 2) tapi belum divalidasi khusus terhadap requirement Backlog 4 ini
 
 **QC 4 (Sari):** Uji dengan set foto sengaja buram/miring/gelap, verifikasi sistem menolak dengan pesan jelas, bukan memberi hasil ngawur.
+**Catatan jujur untuk QC:** unit test memakai gambar SINTETIK (dibuat dgn PIL/NumPy: warna solid, checkerboard+noise, gambar sangat gelap/terang), BUKAN foto lapangan asli — karena foto real warga Coblong belum tersedia (lihat gap di `dataset-decision.md` §7). Threshold blur & pencahayaan defensible secara teknis (riset + eksperimen numerik terdokumentasi) tapi direkomendasikan dikalibrasi ulang begitu foto lapangan asli tersedia, sebelum dianggap final untuk audit klien.
 
 ---
 
@@ -95,12 +97,14 @@ Sesuai poin #14 brief: kamera buram, tidak stabil, jarak tidak konsisten.
 
 ## BACKLOG 6 — Model Serving API (FastAPI, sesuai kontrak existing)
 **Role:** Dimas
-**Status:** 🔴
+**Status:** 🟡 Endpoint `/predict` & `/ws/predict` selesai + berjalan nyata dgn MOCK classifier (model YOLOv8 asli Backlog 5 belum ada). 20/20 test lulus (8 test integrasi API baru + 12 test lama). Diverifikasi juga dengan live server sungguhan (uvicorn + curl + client WebSocket nyata), bukan cuma test harness. Kode: `api/main.py`, `api/routes/predict.py`, `api/routes/ws_predict.py`, `api/schemas/predict_schema.py`, `api/services/mock_classifier.py`, `api/services/image_annotator.py`.
 
-- [ ] Implementasi endpoint `/predict` (HTTP, multipart image) sesuai schema yang sudah diberikan Daffa
-- [ ] Implementasi endpoint `/ws/predict` (WebSocket realtime) dengan `serverLatencyMs`
-- [ ] Optimasi latency (target: respons cepat/near real-time sesuai permintaan poin #13)
-- [ ] Error handling: `NO_WASTE_DETECTED` sesuai contract
+- [x] Implementasi endpoint `/predict` (HTTP, multipart image) — field kontrak: `requestId`, `detectedType`, `confidenceScore`, `estimatedVolumeLiter`, `organik_percent`, `non_organik_percent`, `detections[]`, `vendorName`, `annotatedImageBase64`. Diuji dgn curl sungguhan ke server live (`uvicorn api.main:app`), respons sesuai skema.
+- [x] Implementasi endpoint `/ws/predict` (WebSocket realtime) dengan `serverLatencyMs` — protokol binary frame per pesan, balasan JSON per frame, koneksi tetap hidup pada error (tidak reconnect tiap frame). Diuji dgn client `websockets` nyata: 3 frame berurutan, `serverLatencyMs` terukur nyata (~104–178ms di CPU gateway, BUKAN hardcode).
+- [x] Error handling: `NO_WASTE_DETECTED` sesuai contract, HTTP 200 dgn body error terstruktur (bukan 5xx) — dipicu saat confidence mock < 40%; diverifikasi lolos terpicu di test (`test_predict_many_requests_eventually_hits_no_waste_detected`).
+- [ ] Optimasi latency (target: respons cepat/near real-time sesuai permintaan poin #13) — **belum jadi fokus sesi ini**; latency saat ini didominasi delay buatan mock (~50–180ms) yang mensimulasikan compute time, BUKAN representasi latency model asli — perlu diukur ulang setelah model YOLOv8 nyata (Backlog 5) di-plug-in.
+
+**Catatan jujur untuk QC (Sari):** classifier di balik endpoint ini adalah **MOCK** (heuristik warna dominan gambar + random jitter, `api/services/mock_classifier.py`) — SENGAJA, sesuai instruksi, karena model YOLOv8 asli belum selesai training (Backlog 5). Kontrak I/O (skema request/response) sudah final & stabil, tapi hasil klasifikasi TIDAK merepresentasikan akurasi model asli — jangan dipakai untuk menilai kualitas AI, hanya untuk menguji integrasi Backend (Backlog 7)/Frontend (Backlog 8) terhadap kontrak API. Swap ke model asli nanti hanya perlu ganti `MockClassifier` di `routes/predict.py` & `routes/ws_predict.py`, skema tidak berubah.
 
 **QC 6 (Sari):** Uji load — response time diukur dan didokumentasikan (klaim "nano second" tidak mungkin literal untuk inference CV — PM akan luruskan definisi target performa dengan Daffa; realistisnya target low-latency dalam hitungan ratusan ms).
 
