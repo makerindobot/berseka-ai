@@ -47,6 +47,7 @@ rsync -a --delete \
   --exclude '.git' \
   --exclude 'uploads' \
   --exclude 'data' \
+  --exclude 'data-storage' \
   "$SOURCE_DIR"/ "$DEPLOY_DIR"/
 
 echo "[deploy] Memperbaiki ownership ke $SERVICE_USER:$SERVICE_USER"
