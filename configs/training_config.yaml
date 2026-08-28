@@ -1,0 +1,144 @@
+# BERSEKA AI — Konfigurasi training terpusat (YOLOv8, Kaggle GPU)
+# Dipakai bersama oleh: src/training/train.py dan notebook yang di-generate
+# untuk Kaggle kernel. Ubah nilai di sini, bukan hardcode di script.
+
+seed: 42
+
+paths:
+  dataset_root: "/kaggle/working/berseka_dataset"     # hasil preprocessing, dibuat di runtime Kaggle
+  data_yaml: "/kaggle/working/berseka_dataset/data.yaml"
+  checkpoint_dir: "/kaggle/working/checkpoints"
+  # Kaggle Datasets output persisten lintas run (attach sebagai input dataset run berikutnya)
+  # untuk resume training tanpa mulai dari nol.
+  resume_checkpoint: "/kaggle/input/berseka-checkpoints/last.pt"
+  export_dir: "/kaggle/working/exports"
+
+split:
+  train: 0.70
+  val: 0.15
+  test: 0.15
+  strategy: "group_aware_stratified"   # GroupShuffleSplit per grup + stratify(label, dataset_asal)
+  random_seed: 42
+  dedup_phash: true
+  phash_threshold: 5   # hamming distance maksimum dianggap duplikat
+
+preprocessing:
+  image_size: 640          # sisi persegi standar YOLOv8, resize+pad (letterbox)
+  normalize: true          # dilakukan otomatis oleh ultralytics saat load, dicatat di sini u/ transparansi
+  min_bbox_area_px: 16     # buang bbox terlalu kecil (noise anotasi)
+
+# --- Strategi augmentasi field-condition (docs/dataset/dataset-decision.md §4.3) ---
+augmentation:
+  # Augmentasi bawaan ultralytics (dipakai langsung lewat argumen model.train)
+  ultralytics_builtin:
+    mosaic: 1.0
+    mixup: 0.15
+    degrees: 10.0          # rotasi ringan
+    translate: 0.10
+    scale: 0.5
+    shear: 2.0
+    perspective: 0.0008    # simulasi sudut jepret tidak konsisten
+    flipud: 0.3
+    fliplr: 0.5
+    hsv_h: 0.02             # hue jitter (variasi white-balance HP)
+    hsv_s: 0.6
+    hsv_v: 0.5              # brightness/value jitter luas
+  # Augmentasi kustom via Albumentations (diterapkan di tahap preprocessing/offline
+  # untuk sample tambahan classifier & synthetic bbox, TIDAK menimpa aug bawaan YOLO)
+  albumentations_extra:
+    motion_blur:
+      enabled: true
+      blur_limit: 7
+      p: 0.25
+    gaussian_blur:
+      enabled: true
+      blur_limit: [3, 5]
+      p: 0.15
+    gaussian_noise:
+      enabled: true
+      var_limit: [10.0, 50.0]
+      p: 0.2
+    jpeg_compression:
+      enabled: true
+      quality_lower: 35
+      quality_upper: 80
+      p: 0.35
+    random_brightness_contrast:
+      enabled: true
+      brightness_limit: 0.35
+      contrast_limit: 0.3
+      p: 0.4
+    coarse_dropout_occlusion:
+      enabled: true
+      max_holes: 4
+      max_height_ratio: 0.15
+      max_width_ratio: 0.15
+      p: 0.2
+    color_jitter_hue:
+      enabled: true
+      hue_shift_limit: 15
+      p: 0.25
+  copy_paste_synthetic_bbox:
+    enabled: true
+    description: >
+      Crop objek dari dataset classification tanpa bbox (Garbage Classification v2,
+      RealWaste, dll), tempel ke background foto tong sampah kosong/random untuk
+      membentuk sample bbox sintetik tambahan, khususnya kelas ORGANIC yang minim di TACO.
+    max_pastes_per_image: 3
+    target_class_priority: ["ORGANIC"]
+
+class_balancing:
+  target_ratio_non_organic_max: 0.70   # NON_ORGANIC tidak boleh > 70% dari total
+  target_ratio_range: [0.55, 0.65]     # target indikatif 55:45 - 60:40 (NON_ORGANIC:ORGANIC)
+  undersample_sources_if_needed:
+    - "garbage_classification_v2"
+    - "alistairking_recyclable_household"
+  oversample_augment_sources:
+    - "realwaste"                      # Food Organics + Vegetation
+    - "garbage_classification_v2"      # biological
+
+# --- Training YOLOv8 ---
+model:
+  architecture: "yolov8n.pt"   # nano untuk validasi pipeline cepat (dry-run)
+  architecture_full_run: "yolov8s.pt"  # kandidat naik ke small/medium untuk full run, evaluasi trade-off
+  task: "detect"
+  num_classes: 2
+  class_names: ["ORGANIC", "NON_ORGANIC"]
+
+training:
+  # --- profil dry-run: validasi pipeline, BUKAN full training ---
+  dry_run:
+    epochs: 3
+    batch: 8
+    imgsz: 640
+    subset_fraction: 0.02   # ~2% data untuk cek pipeline jalan tanpa habiskan kuota GPU
+    device: 0
+    workers: 2
+    patience: 0
+  # --- profil full training run (dijalankan bertahap, lihat docs/architecture/training-pipeline.md) ---
+  full_run:
+    epochs: 100
+    batch: 16
+    imgsz: 640
+    device: 0
+    workers: 4
+    patience: 20            # early stopping
+    save_period: 5          # checkpoint tiap 5 epoch untuk resume aman dalam batas sesi Kaggle
+    optimizer: "AdamW"
+    lr0: 0.001
+    cos_lr: true
+    label_smoothing: 0.0
+    close_mosaic: 10         # matikan mosaic di 10 epoch terakhir agar konvergensi stabil
+
+target_metrics:
+  map50_min: 0.85
+  accuracy_min: 0.90
+  f1_min: 0.85
+  max_train_val_loss_gap_pct: 15.0
+
+kaggle_quota:
+  weekly_gpu_hours: 30
+  api_request_window_hours: 5
+  notes: >
+    Lihat docs/architecture/training-pipeline.md untuk strategi lengkap
+    pemakaian kuota (checkpoint/resume, dry-run sebelum full run, jadwal iterasi).

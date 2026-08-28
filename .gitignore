@@ -9,6 +9,8 @@ models/checkpoints/*
 !models/checkpoints/.gitkeep
 *.pt
 *.onnx
+runs/
+wandb/
 *.h5
 .env
 .kaggle/

@@ -1,0 +1,24 @@
+{
+  "id": "makerindo/berseka-yolov8-training",
+  "title": "BERSEKA AI - YOLOv8 Training Pipeline",
+  "code_file": "berseka_training_pipeline.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "vencerlanz09/taco-dataset-yolo-format",
+    "kneroma/tacotrashdataset",
+    "sumn2u/garbage-classification-v2",
+    "alistairking/recyclable-and-household-waste-classification",
+    "joebeachcapital/realwaste",
+    "aashidutt3/waste-segregation-image-dataset",
+    "makerindo/berseka-src",
+    "makerindo/berseka-checkpoints"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

@@ -23,7 +23,7 @@ Deadline ini SANGAT AGRESIF untuk scope penuh (dataset+training+backend+frontend
 
 ## BACKLOG 1 — Riset & Persiapan Dataset
 **Role:** Dimas (Backend/ML Engineer) + PM
-**Status:** 🟡
+**Status:** 🟢 SELESAI — Lolos QC 1 (28 Agustus 2026). Dokumen: `docs/dataset/dataset-decision.md`
 
 - [ ] Analisis dataset kandidat: TACO (YOLO format), Garbage Classification v2, Waste Segregation Image Dataset
 - [ ] Tentukan skema label final: `ORGANIC` vs `NON_ORGANIC` (mapping dari kelas granular TACO ke 2 kelas utama)
@@ -36,12 +36,15 @@ Deadline ini SANGAT AGRESIF untuk scope penuh (dataset+training+backend+frontend
 
 ## BACKLOG 2 — Arsitektur & Setup Training Pipeline (Kaggle)
 **Role:** Dimas + Bayu (infra Kaggle)
-**Status:** 🔴
+**Status:** 🟡 Kode & pipeline selesai + teruji lokal (end-to-end dry-run CPU beneran jalan). BELUM push ke Kaggle & BELUM full training run GPU (menunggu koordinasi kuota dgn PM). Detail: `docs/architecture/training-pipeline.md`
 
-- [ ] Pilih arsitektur: YOLOv8 (segmentation/detection) — proven untuk TACO dataset
-- [ ] Setup Kaggle Notebook terprogram via Kaggle API (dijalankan dari gateway, dipantau limit token/GPU quota)
-- [ ] Definisikan output model: bounding box + klasifikasi organik/anorganik + confidence score
-- [ ] Implementasi estimasi volume (Liter/Kg) berdasarkan area bounding box relatif terhadap volume tong sampah yang diinput user — BUTUH kalibrasi jarak & posisi kamera (lihat Backlog 3)
+- [x] Pilih arsitektur: YOLOv8 (ultralytics) — nano untuk dry-run, small untuk full run
+- [x] Setup Kaggle Notebook terprogram via Kaggle API (`src/training/push_kaggle_kernel.py`, generate+push siap pakai, KAGGLE_API_TOKEN terverifikasi jalan)
+- [x] Preprocessing: label mapping terpusat (`configs/label_mapping.yaml`), remap TACO, split anti-leakage (group-aware+stratifikasi ganda+dedup pHash), augmentasi field-condition — semua diuji dengan data sintetik & 3 unit test lulus (`tests/unit/test_preprocessing_pipeline.py`)
+- [x] Skrip evaluasi metrik otomatis (mAP, precision, recall, F1, confusion matrix, loss curve, gate vs target Backlog 1) — diuji end-to-end
+- [ ] Definisikan output model: bounding box + klasifikasi organik/anorganik + confidence score (skema sudah ada di data.yaml biner, kontrak output API belum dikerjakan — Backlog 6)
+- [ ] Implementasi estimasi volume (Liter/Kg) — di luar scope Backlog 2, lihat Backlog 3
+- [ ] **BELUM**: download penuh dataset gabungan, EDA volume nyata, push notebook ke Kaggle, full training run GPU
 
 **QC 2 (Sari):** Review notebook menghasilkan output sesuai schema kontrak (`detectedType`, `confidenceScore`, `estimatedVolumeLiter`, `organik_percent`, `non_organik_percent`, `detections[]`).
 

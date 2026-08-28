@@ -1,0 +1,211 @@
+# BERSEKA AI — Konfigurasi Terpusat Mapping Label
+# Single source of truth untuk seluruh mapping kelas granular -> skema biner
+# ORGANIC / NON_ORGANIC. JANGAN hardcode mapping ini di kode training/preprocessing —
+# selalu load dari file ini agar auditable & mudah direvisi bila definisi klien berubah.
+#
+# Acuan: docs/dataset/dataset-decision.md §3 (Skema Mapping Label)
+# Status: Final — Backlog 1, siap dieksekusi di Backlog 2.
+# Setiap perubahan mapping WAJIB disinkronkan balik ke dataset-decision.md §3.
+
+version: 1
+target_classes:
+  - ORGANIC
+  - NON_ORGANIC
+
+# kelas yang dibuang sepenuhnya dari training set (ambigu, tidak bisa dipetakan aman)
+dropped_classes:
+  - "Unlabeled litter"
+  - "Other litter"
+
+# ============================================================
+# 1) TACO (60 kelas granular) -> ORGANIC / NON_ORGANIC
+#    Dipakai untuk dataset detector (bbox): vencerlanz09/taco-dataset-yolo-format
+#    diverifikasi silang dengan kneroma/tacotrashdataset (COCO asli).
+# ============================================================
+taco:
+  organic:
+    - "Food waste"
+    - "Garden waste"
+  non_organic:
+    # plastik
+    - "Clear plastic bottle"
+    - "Other plastic bottle"
+    - "Plastic bottle cap"
+    - "Plastic lid"
+    - "Plastic film"
+    - "Plastic straw"
+    - "Plastic utensils"
+    - "Disposable plastic cup"
+    - "Styrofoam piece"
+    - "Other plastic"
+    - "Other plastic wrapper"
+    - "Single-use carrier bag"
+    - "Six pack rings"
+    - "Plastic glooves"
+    - "Plastic gloves"
+    - "Squeezable tube"
+    - "Tupperware"
+    - "Polypropylene bag"
+    - "Crisp packet"
+    - "Spread tub"
+    - "Foam food container"
+    - "Foam cup"
+    # logam
+    - "Drink can"
+    - "Metal bottle cap"
+    - "Aluminium foil"
+    - "Scrap metal"
+    - "Pop tab"
+    - "Metal lid"
+    - "Food can"
+    - "Aerosol"
+    # kaca
+    - "Glass bottle"
+    - "Glass jar"
+    - "Glass cup"
+    - "Broken glass"
+    # kertas & kardus (operasional non-organik, lihat §3.3 dataset-decision.md)
+    - "Normal paper"
+    - "Paper cup"
+    - "Paper bag"
+    - "Tissues"
+    - "Magazine paper"
+    - "Wrapping paper"
+    - "Corrugated carton"
+    - "Other carton"
+    - "Egg carton"
+    - "Drink carton"
+    - "Meal carton"
+    - "Pizza box"
+    - "Toilet tube"
+    # rokok (filter mengandung plastik)
+    - "Cigarette"
+    - "Cigarette butt"
+    # lain-lain non-organik
+    - "Rope & strings"
+    - "Rope - strings"
+    - "Shoe"
+    - "Battery"
+    - "Unlabeled litter"      # akan didrop, lihat dropped_classes
+    - "Other litter"          # akan didrop, lihat dropped_classes
+  # flag tambahan untuk metadata internal, TIDAK mengubah label biner v1
+  hazard_flags:
+    - "Battery"
+
+# ============================================================
+# 2) RealWaste (joebeachcapital/realwaste) — 9 kelas
+# ============================================================
+realwaste:
+  organic:
+    - "Food Organics"
+    - "Vegetation"
+  non_organic:
+    - "Cardboard"
+    - "Glass"
+    - "Metal"
+    - "Paper"
+    - "Plastic"
+    - "Textile Trash"
+    - "Miscellaneous Trash"   # default aman: non-organik (lihat §3, judgment call)
+
+# ============================================================
+# 3) Garbage Classification v2 (sumn2u/garbage-classification-v2) — 10 kelas
+# ============================================================
+garbage_classification_v2:
+  organic:
+    - "biological"
+  non_organic:
+    - "metal"
+    - "glass"
+    - "paper"
+    - "battery"
+    - "trash"
+    - "cardboard"
+    - "shoes"
+    - "clothes"
+    - "plastic"
+
+# ============================================================
+# 4) Recyclable & Household Waste Classification (alistairking) — 30 kelas
+#    Nama kelas asli mengikuti struktur folder dataset; verifikasi taksonomi
+#    persis saat akuisisi (Backlog 2) karena README publik tidak selalu 1:1
+#    dengan nama folder. Daftar di bawah mencakup nama folder umum dataset ini.
+# ============================================================
+alistairking_recyclable_household:
+  organic:
+    - "food_waste"
+    - "coffee_grounds"
+    - "eggshells"
+    - "tea_bags"
+  non_organic:
+    - "aerosol_cans"
+    - "aluminum_food_cans"
+    - "aluminum_soda_cans"
+    - "cardboard_boxes"
+    - "cardboard_packaging"
+    - "clothing"
+    - "disposable_plastic_cutlery"
+    - "glass_beverage_bottles"
+    - "glass_cosmetic_containers"
+    - "glass_food_jars"
+    - "magazines"
+    - "newspaper"
+    - "office_paper"
+    - "paper_cups"
+    - "plastic_cup_lids"
+    - "plastic_detergent_bottles"
+    - "plastic_food_containers"
+    - "plastic_shopping_bags"
+    - "plastic_soda_bottles"
+    - "plastic_straws"
+    - "plastic_trash_bags"
+    - "plastic_water_bottles"
+    - "shoes"
+    - "steel_food_cans"
+    - "styrofoam_cups"
+    - "styrofoam_food_containers"
+
+# ============================================================
+# 5) Waste Segregation Image Dataset (aashidutt3) — mapping 1:1
+# ============================================================
+waste_segregation_aashidutt3:
+  organic:
+    - "Biodegradable"
+  non_organic:
+    - "Non-Biodegradable"
+    - "Non Biodegradable"   # varian penamaan folder, verifikasi saat akuisisi
+
+# ============================================================
+# Sumber dataset & peran dalam pipeline (untuk dokumentasi/traceability)
+# ============================================================
+dataset_sources:
+  taco_yolo:
+    kaggle_ref: "vencerlanz09/taco-dataset-yolo-format"
+    role: "detector_bbox_base"
+    has_bbox: true
+    license: "CC BY 4.0"
+  taco_coco:
+    kaggle_ref: "kneroma/tacotrashdataset"
+    role: "detector_verification_only"
+    has_bbox: true
+    license: "CC BY 4.0"
+  garbage_classification_v2:
+    kaggle_ref: "sumn2u/garbage-classification-v2"
+    role: "classifier_and_synthetic_bbox_crop_source"
+    has_bbox: false
+    license: "unverified_at_acquisition"
+  alistairking_recyclable_household:
+    kaggle_ref: "alistairking/recyclable-and-household-waste-classification"
+    role: "classifier_and_domain_augmentation"
+    has_bbox: false
+    license: "non_commercial_research"
+  waste_segregation_aashidutt3:
+    kaggle_ref: "aashidutt3/waste-segregation-image-dataset"
+    role: "classifier_binary_direct"
+    has_bbox: false
+    license: "unverified_at_acquisition"
+  realwaste:
+    kaggle_ref: "joebeachcapital/realwaste"
+    role: "classifier_domain_realism_highest"
+    has_bbox: false
+    license: "CC BY-NC-SA 4.0 (strictest clause applied)"
