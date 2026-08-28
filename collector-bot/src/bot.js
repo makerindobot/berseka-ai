@@ -104,7 +104,7 @@ function main() {
 
     try {
       if (data.startsWith('group:')) {
-        const groupId = Number(data.split(':')[1]);
+        const groupId = data.split(':').slice(1).join(':');
         const group = config.groups.find((g) => g.id === groupId);
         if (!group) {
           await bot.answerCallbackQuery(query.id, { text: 'Kelompok tidak valid.' });
