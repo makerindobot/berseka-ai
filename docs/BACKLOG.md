@@ -52,33 +52,36 @@ Deadline ini SANGAT AGRESIF untuk scope penuh (dataset+training+backend+frontend
 
 ## BACKLOG 3 — Kalibrasi Kamera & Validasi Estimasi Volume (KRITIKAL)
 **Role:** Dimas + Nara (UX untuk instruksi pengguna)
-**Status:** 🔴
+**Status:** 🟡 Dokumen riset & formula v1 selesai (disusun Nara), **TEORITIS — belum divalidasi data lapangan**. Belum diintegrasikan ke kode/endpoint mana pun. Detail: `docs/architecture/camera-calibration.md`.
 
 Sesuai arahan atasan Daffa: harus ada validasi antara "bacaan kamera+AI" vs pengukuran manual, dan jarak/posisi kamera optimal.
 
-- [ ] Tentukan rentang jarak kamera optimal (mis. 30-50cm tampak atas) berdasarkan riset + uji coba
-- [ ] Definisikan aturan: foto di luar rentang optimal → confidence otomatis diturunkan / ditandai "kualitas rendah"
-- [ ] Buat tabel kalibrasi volume tong vs area piksel terdeteksi
-- [ ] Dokumentasi panduan foto untuk warga (jarak, pencahayaan, sudut) — jadi bagian UX aplikasi
+- [x] Tentukan rentang jarak kamera optimal — **30–50cm, tampak atas tegak lurus**, diturunkan dari perhitungan geometris (FOV kamera HP ~65° efektif × ukuran tong 10–50L). 🔴 Nilai FOV & rasio tong adalah estimasi riset publik, **belum diverifikasi dengan HP/tong sungguhan warga Coblong**.
+- [x] Definisikan aturan confidence turun di luar rentang optimal — formula `quality_multiplier(area_ratio, bbox_touches_edge)`: rentang aman `area_ratio` 15%-50%, di luar itu turun linear ke floor 0.3, bbox nyentuh tepi = blokir total (`multiplier=0.0`). 🟡 Threshold berbasis matematis, belum di-tuning empiris.
+- [x] Tabel kalibrasi volume awal (v1) — formula `estimated_volume_liter = 1.73e-9 × (bbox_area_px)^1.5`, dikalibrasi pada titik referensi jarak 40cm & resolusi 4000×3000px. 🔴 **Margin error sistematis ±20-25% disadari sendiri oleh penulis** akibat asumsi jarak tetap (rentang optimal sebenarnya 30-50cm, bukan titik 40cm) — wajib direvisi begitu ada data lapangan.
+- [x] Panduan foto untuk warga (Bahasa Indonesia awam) — 6 langkah + tooltip singkat, siap dipakai UI (Backlog 8), termasuk instruksi eksplisit "pakai kamera 1x, bukan wide" untuk menghindari distorsi lensa.
+- [ ] **Belum dikerjakan**: rencana validasi lapangan (§7 dokumen) baru berupa RENCANA, belum dieksekusi — perlu foto & ukur manual 10-15 tong nyata Coblong begitu data collector-bot mulai masuk (lihat `field-data-collection-plan.md`).
 
-**QC 3 (Sari):** Uji dengan sample foto pada jarak bervariasi, verifikasi estimasi volume konsisten dalam toleransi wajar (%error terdokumentasi).
+**QC 3 (Sari):** Uji dengan sample foto pada jarak bervariasi, verifikasi estimasi volume konsisten dalam toleransi wajar (%error terdokumentasi). **BELUM BISA DIEKSEKUSI** — menunggu foto lapangan nyata Coblong (collector-bot sedang tahap pengumpulan, lihat `field-data-collection-plan.md`).
+
+**Catatan jujur untuk QC:** dokumen ini SENGAJA ditandai penulis sendiri dengan sistem warna 🟢/🟡/🔴 per klaim (riset terverifikasi / turunan matematis / wajib divalidasi) — semua angka jarak, formula volume, dan threshold confidence berstatus 🟡 atau 🔴, TIDAK ADA yang sudah tervalidasi dengan data lapangan asli. Jangan dianggap "selesai" produksi sampai QC 3 tercapai dengan data nyata.
 
 ---
 
 ## BACKLOG 4 — Antisipasi Kondisi Lapangan Non-Ideal
 **Role:** Dimas
-**Status:** 🟡 Modul validasi kualitas foto selesai + 9 unit test lulus (verifikasi lokal). BELUM diverifikasi dgn foto lapangan asli, BELUM diintegrasikan ke endpoint (Backlog 6), item confidence & augmentation training belum dikerjakan di sesi ini. Detail: `docs/architecture/image-quality-gate.md`
+**Status:** 🟡 Modul validasi kualitas foto selesai + 9 unit test lulus (diverifikasi ulang oleh PM, semua PASS). **BELUM diverifikasi dgn foto lapangan asli, BELUM diintegrasikan ke endpoint `/predict`** (Backlog 6 sudah live tapi belum memanggil modul ini) — item confidence & augmentation training belum dikerjakan. Detail: `docs/architecture/image-quality-gate.md`
 
 Sesuai poin #14 brief: kamera buram, tidak stabil, jarak tidak konsisten.
 
 - [x] Deteksi blur (Laplacian variance / sharpness threshold) → tolak foto buram sebelum inference — `src/preprocessing/image_quality_check.py`, threshold 100 (verifikasi empiris di `docs/architecture/image-quality-gate.md` §2.3), diuji `tests/unit/test_image_quality_check.py` (PASS)
 - [x] Deteksi foto gelap/pencahayaan buruk → minta foto ulang — implementasi sama (brightness histogram + rasio clipped-pixel, threshold 40–215/255), diuji & PASS
 - [x] Deteksi resolusi terlalu rendah (item tambahan di luar checklist asli, ditambahkan karena ada di scope tugas) — min sisi terpendek 320px, diuji & PASS
-- [ ] Validasi confidence < 40% → error `NO_WASTE_DETECTED` (sudah sesuai contract) — **belum dikerjakan**, ini logic di sisi model/endpoint (Backlog 6), bukan modul pre-validasi kualitas foto
-- [ ] Data augmentation saat training: motion blur, brightness variation, rotasi ringan, agar model robust terhadap kondisi lapangan nyata — **belum dikerjakan di sesi ini**; augmentasi umum untuk training sudah ada di `src/preprocessing/augmentation.py` (Backlog 2) tapi belum divalidasi khusus terhadap requirement Backlog 4 ini
+- [ ] Validasi confidence < 40% → error `NO_WASTE_DETECTED` — **sudah diimplementasikan di sisi lain** (Backlog 6, `api/routes/predict.py`), TAPI belum terhubung dengan modul quality-gate ini — saat ini `/predict` menerima foto buram/gelap apa adanya tanpa ditolak duluan oleh gate kualitas. **Perlu kerja integrasi lanjutan**: panggil `check_image_quality()` di awal handler `/predict` sebelum masuk ke classifier.
+- [ ] Data augmentation saat training: motion blur, brightness variation, rotasi ringan, agar model robust terhadap kondisi lapangan nyata — **belum dikerjakan khusus untuk Backlog 4**; augmentasi umum untuk training sudah ada di `src/preprocessing/augmentation.py` (Backlog 2) tapi belum divalidasi khusus terhadap requirement Backlog 4 ini
 
 **QC 4 (Sari):** Uji dengan set foto sengaja buram/miring/gelap, verifikasi sistem menolak dengan pesan jelas, bukan memberi hasil ngawur.
-**Catatan jujur untuk QC:** unit test memakai gambar SINTETIK (dibuat dgn PIL/NumPy: warna solid, checkerboard+noise, gambar sangat gelap/terang), BUKAN foto lapangan asli — karena foto real warga Coblong belum tersedia (lihat gap di `dataset-decision.md` §7). Threshold blur & pencahayaan defensible secara teknis (riset + eksperimen numerik terdokumentasi) tapi direkomendasikan dikalibrasi ulang begitu foto lapangan asli tersedia, sebelum dianggap final untuk audit klien.
+**Catatan jujur untuk QC:** unit test memakai gambar SINTETIK (dibuat dgn PIL/NumPy: warna solid, checkerboard+noise, gambar sangat gelap/terang), BUKAN foto lapangan asli — karena foto real warga Coblong belum tersedia (lihat gap di `dataset-decision.md` §7). Threshold blur & pencahayaan defensible secara teknis (riset + eksperimen numerik terdokumentasi) tapi direkomendasikan dikalibrasi ulang begitu foto lapangan asli tersedia, sebelum dianggap final untuk audit klien. **Modul ini juga masih BERDIRI SENDIRI, belum tersambung ke endpoint /predict** — celah ini harus ditutup sebelum Backlog 4 dianggap benar-benar selesai fungsional (bukan cuma modul terisolasi yang lolos unit test).
 
 ---
 
