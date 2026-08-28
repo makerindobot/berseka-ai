@@ -1,0 +1,237 @@
+'use strict';
+/**
+ * bot.js — BERSEKA AI Collector Bot
+ *
+ * =============================================================================
+ * SENGAJA TERISOLASI TOTAL DARI CLAUDE CODE / GATEWAY CONTROL PLANE
+ * =============================================================================
+ * Ini adalah proses Node.js MANDIRI, dijalankan lewat systemd service-nya
+ * sendiri (berseka-collector-bot.service), BUKAN bagian dari hermes-gateway
+ * / 9router.service yang berjalan di VPS yang sama.
+ *
+ * Kemampuan bot ini SENGAJA dibatasi hanya ke 4 hal:
+ *   1. Menerima command Telegram (/mulai) & tap tombol inline keyboard.
+ *   2. Menerima file foto dari user Telegram.
+ *   3. Meng-upload foto ke storage (Cloudflare R2 atau fallback lokal).
+ *   4. Menyimpan metadata ke file JSONL lokal.
+ *
+ * Bot ini SECARA SENGAJA TIDAK PUNYA:
+ *   - Kemampuan eksekusi command sistem / akses shell (tidak ada child_process,
+ *     tidak ada exec/spawn di seluruh source tree collector-bot/).
+ *   - Kemampuan memanggil API Hermes atau MCP tool apa pun.
+ *   - Jalur relay pesan dari user Telegram ke Claude Code / asisten AI mana pun.
+ *   - Port inbound (pakai long polling Telegram, bukan webhook) - tidak perlu
+ *     buka port baru di firewall/UFW VPS.
+ *
+ * Jika kelak ada kebutuhan menambah fitur, developer WAJIB mempertahankan
+ * batasan ini kecuali ada keputusan eksplisit & terdokumentasi dari pemilik
+ * proyek (Daffa) untuk mengubah model keamanan ini. Lihat juga README.md
+ * bagian "Security & Isolation".
+ * =============================================================================
+ */
+
+const TelegramBot = require('node-telegram-bot-api');
+const { loadConfig } = require('./lib/config');
+const { createStorage } = require('./lib/storage');
+const { ManifestWriter } = require('./lib/manifest');
+
+const JENIS_TONG = {
+  organik: { label: 'Organik', emoji: '🟢' },
+  anorganik: { label: 'Anorganik', emoji: '🔵' },
+};
+
+// In-memory session state per chat. Bot ini stateless terhadap sistem lain -
+// state hanya menyimpan progres wizard (kelompok dipilih, jenis tong dipilih)
+// dan hilang begitu proses restart. Tidak ada data sensitif di sini.
+const sessions = new Map();
+
+function getSession(chatId) {
+  if (!sessions.has(chatId)) {
+    sessions.set(chatId, {});
+  }
+  return sessions.get(chatId);
+}
+
+function chunkGroupsIntoRows(groups, perRow = 4) {
+  const rows = [];
+  for (let i = 0; i < groups.length; i += perRow) {
+    const row = groups.slice(i, i + perRow).map((g) => ({
+      text: String(g.id),
+      callback_data: `group:${g.id}`,
+    }));
+    rows.push(row);
+  }
+  return rows;
+}
+
+function jenisTongKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: `${JENIS_TONG.organik.emoji} ${JENIS_TONG.organik.label}`, callback_data: 'jenis:organik' },
+        { text: `${JENIS_TONG.anorganik.emoji} ${JENIS_TONG.anorganik.label}`, callback_data: 'jenis:anorganik' },
+      ],
+    ],
+  };
+}
+
+function main() {
+  const config = loadConfig();
+  const storage = createStorage(config);
+  const manifest = new ManifestWriter({ manifestPath: config.manifestPath });
+
+  const bot = new TelegramBot(config.botToken, { polling: true });
+
+  console.log('[berseka-collector-bot] Bot dimulai (long polling). Mode storage:', config.storageMode);
+  console.log('[berseka-collector-bot] Jumlah kelompok terdaftar:', config.groups.length);
+
+  bot.onText(/^\/start$|^\/mulai$/, (msg) => {
+    const chatId = msg.chat.id;
+    sessions.set(chatId, {});
+    const rows = chunkGroupsIntoRows(config.groups);
+    bot.sendMessage(
+      chatId,
+      '👋 Halo! Selamat datang di *Bot Pengumpul Foto BERSEKA AI*.\n\n' +
+        'Silakan pilih nomor kelompok kalian:',
+      { reply_markup: { inline_keyboard: rows }, parse_mode: 'Markdown' }
+    );
+  });
+
+  bot.on('callback_query', async (query) => {
+    const chatId = query.message.chat.id;
+    const data = query.data || '';
+    const session = getSession(chatId);
+
+    try {
+      if (data.startsWith('group:')) {
+        const groupId = Number(data.split(':')[1]);
+        const group = config.groups.find((g) => g.id === groupId);
+        if (!group) {
+          await bot.answerCallbackQuery(query.id, { text: 'Kelompok tidak valid.' });
+          return;
+        }
+        session.groupId = group.id;
+        session.groupLabel = group.label;
+        await bot.answerCallbackQuery(query.id);
+        await bot.sendMessage(
+          chatId,
+          `✅ Kelompok dipilih: *${group.label}*\n\nSekarang pilih jenis tong sampah yang mau difoto:`,
+          { reply_markup: jenisTongKeyboard(), parse_mode: 'Markdown' }
+        );
+        return;
+      }
+
+      if (data.startsWith('jenis:')) {
+        const jenis = data.split(':')[1];
+        if (!JENIS_TONG[jenis]) {
+          await bot.answerCallbackQuery(query.id, { text: 'Pilihan tidak valid.' });
+          return;
+        }
+        if (!session.groupId) {
+          await bot.answerCallbackQuery(query.id, { text: 'Silakan pilih kelompok dulu dengan /mulai.' });
+          return;
+        }
+        session.jenisTong = jenis;
+        await bot.answerCallbackQuery(query.id);
+        await bot.sendMessage(
+          chatId,
+          `📸 Jenis tong: *${JENIS_TONG[jenis].label}*\n\n` +
+            'Sekarang kirim foto tong sampahnya (foto dari atas, jelas & cukup cahaya).',
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+
+      await bot.answerCallbackQuery(query.id);
+    } catch (err) {
+      console.error('[berseka-collector-bot] Error handling callback_query:', err);
+      try {
+        await bot.answerCallbackQuery(query.id, { text: 'Terjadi kesalahan, coba lagi.' });
+      } catch (_) {
+        /* noop */
+      }
+    }
+  });
+
+  bot.on('photo', async (msg) => {
+    const chatId = msg.chat.id;
+    const session = getSession(chatId);
+
+    if (!session.groupId || !session.jenisTong) {
+      await bot.sendMessage(
+        chatId,
+        '⚠️ Sebelum kirim foto, silakan ketik /mulai lalu pilih kelompok dan jenis tong dulu ya.'
+      );
+      return;
+    }
+
+    try {
+      // Ambil resolusi foto terbesar yang dikirim Telegram.
+      const photos = msg.photo;
+      const best = photos[photos.length - 1];
+      const fileId = best.file_id;
+
+      const fileLink = await bot.getFileLink(fileId);
+      const response = await fetch(fileLink);
+      if (!response.ok) {
+        throw new Error(`Gagal mengunduh foto dari Telegram: HTTP ${response.status}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      const timestampIso = new Date().toISOString();
+
+      const result = await storage.putPhoto({
+        buffer,
+        groupId: session.groupId,
+        jenisTong: session.jenisTong,
+        timestampIso,
+      });
+
+      const metadata = {
+        kelompok_id: session.groupId,
+        kelompok_label: session.groupLabel,
+        jenis_tong: session.jenisTong,
+        timestamp_iso: timestampIso,
+        // telegram_user_id disimpan HANYA untuk audit teknis internal
+        // (mis. debugging duplikasi/spam), BUKAN untuk identifikasi
+        // pribadi ke publik atau dipublikasikan bersama dataset.
+        telegram_user_id: msg.from ? msg.from.id : null,
+        file_id: fileId,
+        storage_mode: result.storageMode,
+        storage_key: result.key,
+        storage_location: result.location,
+      };
+
+      manifest.append(metadata);
+
+      await bot.sendMessage(
+        chatId,
+        `✅ Foto tersimpan!\n\nKelompok: *${session.groupLabel}*\nJenis: *${JENIS_TONG[session.jenisTong].label}*\nWaktu: ${timestampIso}\n\n` +
+          'Boleh kirim foto lagi (jenis tong yang sama), atau ketik /mulai untuk ganti kelompok/jenis.',
+        { parse_mode: 'Markdown' }
+      );
+    } catch (err) {
+      console.error('[berseka-collector-bot] Error handling photo:', err);
+      await bot.sendMessage(
+        chatId,
+        '❌ Maaf, ada kendala saat menyimpan foto. Coba kirim ulang, atau hubungi koordinator jika terus gagal.'
+      );
+    }
+  });
+
+  bot.on('polling_error', (err) => {
+    console.error('[berseka-collector-bot] Polling error:', err.message || err);
+  });
+
+  process.on('SIGTERM', () => {
+    console.log('[berseka-collector-bot] SIGTERM diterima, berhenti dengan baik...');
+    bot.stopPolling().finally(() => process.exit(0));
+  });
+  process.on('SIGINT', () => {
+    console.log('[berseka-collector-bot] SIGINT diterima, berhenti dengan baik...');
+    bot.stopPolling().finally(() => process.exit(0));
+  });
+}
+
+main();

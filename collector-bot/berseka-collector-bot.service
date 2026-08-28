@@ -1,0 +1,61 @@
+[Unit]
+# =============================================================================
+# BERSEKA AI Collector Bot - systemd unit
+#
+# SENGAJA TERPISAH dari hermes-gateway.service / 9router.service.
+# Bot ini tidak boleh dijalankan sebagai bagian proses gateway control plane -
+# lihat collector-bot/README.md bagian "Security & Isolation" untuk alasan
+# desain ini.
+# =============================================================================
+Description=BERSEKA AI Collector Bot (Telegram photo intake - isolated from Hermes/gateway)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Dijalankan sebagai user Linux khusus (bukan 'maker', user yang menjalankan
+# hermes-gateway/9router), agar filesystem & privilege benar-benar terpisah.
+User=berseka-bot
+Group=berseka-bot
+
+WorkingDirectory=/home/maker/damaker-studio-projects/berseka-ai/collector-bot
+Environment=HOME=/home/berseka-bot
+Environment=NODE_ENV=production
+EnvironmentFile=/home/maker/damaker-studio-projects/berseka-ai/collector-bot/.env
+
+ExecStart=/usr/bin/node /home/maker/damaker-studio-projects/berseka-ai/collector-bot/src/bot.js
+Restart=always
+RestartSec=5
+MemoryMax=256M
+
+# --- Sandboxing / hardening ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# Izinkan tulis HANYA ke folder proyek bot ini (uploads/ & data/ perlu tulis;
+# yang lain read-only dari sudut pandang unit ini).
+ReadWritePaths=/home/maker/damaker-studio-projects/berseka-ai/collector-bot
+
+# Bot ini pakai long polling ke Telegram API, TIDAK butuh port inbound sama
+# sekali - tidak perlu buka apa pun di UFW. Baris di bawah hanya membatasi
+# address family yang boleh dipakai (IPv4/IPv6/unix), bukan buka port.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

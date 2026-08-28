@@ -1,0 +1,21 @@
+{
+  "name": "berseka-collector-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BERSEKA AI - Bot Telegram pengumpul foto data lapangan (tong sampah) dari 32 kelompok KKN Kecamatan Coblong. Proses TERISOLASI TOTAL dari Claude Code / gateway control plane - lihat SECURITY.md dan README.md.",
+  "type": "commonjs",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node src/bot.js",
+    "dev": "node src/bot.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.687.0",
+    "dotenv": "^16.4.5",
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "license": "UNLICENSED"
+}
