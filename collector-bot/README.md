@@ -10,6 +10,15 @@ ada — itu konteks berbeda).
 
 ---
 
+## Status Deployment (Live)
+
+Bot **sudah aktif** di gateway sejak 28 Agustus 2026, berjalan sebagai `berseka-collector-bot.service`.
+
+**Catatan perubahan dari desain awal (ditemukan saat deployment):**
+- Runtime dipindah dari `/home/maker/.../collector-bot` ke **`/opt/berseka-collector-bot`**. Sebab: `ProtectHome=true` di systemd menyembunyikan seluruh `/home` dari proses sandboxed, sehingga user `berseka-bot` tidak bisa `chdir` ke folder manapun di bawah `/home` meski ACL diberikan. Menaruh runtime di `/opt/` (di luar `/home`) adalah pola standar untuk service Linux dan menjaga `ProtectHome=true` tetap aktif penuh tanpa pengecualian.
+- Opsi `MemoryDenyWriteExecute=true` **dihapus** dari service file. Sebab: V8 (mesin JS Node.js) butuh JIT compilation yang menulis+mengeksekusi memori secara dinamis — opsi ini menyebabkan core dump (`SIGTRAP`) setiap kali Node mencoba compile kode. Ini trade-off yang diketahui untuk runtime dengan JIT (Node/V8, Java, dll); seluruh proteksi sandboxing lain (`ProtectSystem=strict`, `NoNewPrivileges`, `CapabilityBoundingSet=` kosong, dll) tetap aktif.
+- Source code kanonis tetap di repo Git ini (`collector-bot/`); folder `/opt/berseka-collector-bot` adalah *deployment copy* yang perlu di-sync ulang manual (`sudo cp -r`) setiap kali ada perubahan kode, sampai dibuatkan skrip deploy otomatis.
+
 ## Security & Isolation (baca ini dulu)
 
 Bot ini **SENGAJA didesain terisolasi total** dari Claude Code (asisten AI
