@@ -1,6 +1,6 @@
 # BERSEKA AI — Rencana Pengumpulan Data Lapangan (32 Kelompok KKN Coblong)
 
-**Status:** Tahap 1 — Kirim ke Pak Agus dulu, tahap 2 (ke mahasiswa) menyusul setelah beliau setuju
+**Status:** Tahap 1-3 selesai — pesan sudah dikirim ke Pak Agus & diteruskan ke 32 kelompok KKN. Sekarang tahap 4 (pengumpulan foto) sedang berlangsung.
 **Diperbarui:** 28 Agustus 2026
 
 ---
@@ -18,7 +18,7 @@
 
 **Catatan:** sesuaikan sapaan waktu (pagi/siang/sore) sebelum kirim.
 
-**Status:** ⏳ Menunggu Daffa kirim & menunggu respons Pak Agus.
+**Status:** 🟢 SELESAI — sudah dikirim Daffa ke Pak Agus (28 Agustus 2026).
 
 ---
 
@@ -50,7 +50,7 @@ Berbeda dari pesan ke Pak Agus, pesan ini **harus detail dan jelas** karena maha
 >
 > Terima kasih atas kontribusinya! 🙏
 
-**Status:** ⏳ Draft siap, akan dikirim Daffa setelah Pak Agus memberi lampu hijau & menentukan jalur distribusi (grup koordinator KKN/rapat DPL).
+**Status:** 🟢 SELESAI — Pak Agus sudah meneruskan pesan ini ke 32 kelompok KKN.
 
 ---
 
@@ -72,7 +72,7 @@ Berbeda dari pesan ke Pak Agus, pesan ini **harus detail dan jelas** karena maha
 
 | Tahap | Status |
 |-------|--------|
-| 1. Kirim pesan ke Pak Agus | ⏳ Draft siap, menunggu Daffa kirim |
-| 2. Bangun & deploy bot Telegram (isolated) | 🟢 SELESAI — `@bersekabot` live di gateway, storage mode `local` (sementara, belum R2) |
-| 3. Kirim pesan ke mahasiswa | ⏳ Menunggu persetujuan Pak Agus |
-| 4. Pengumpulan foto 32 kelompok | ⏳ Menunggu tahap 3 |
+| 1. Kirim pesan ke Pak Agus | 🟢 SELESAI — Daffa sudah kirim (28 Agustus 2026) |
+| 2. Bangun & deploy bot Telegram (isolated) | 🟢 SELESAI — `@bersekabot` live di gateway, storage mode `local` (sementara, belum R2), bug parsing ID kelompok sudah diperbaiki |
+| 3. Kirim pesan ke mahasiswa | 🟢 SELESAI — Pak Agus sudah teruskan pesan ke 32 kelompok KKN |
+| 4. Pengumpulan foto 32 kelompok | 🟡 BERLANGSUNG — menunggu foto masuk dari mahasiswa via bot |
