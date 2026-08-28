@@ -23,14 +23,27 @@ Deadline ini SANGAT AGRESIF untuk scope penuh (dataset+training+backend+frontend
 
 ## BACKLOG 1 — Riset & Persiapan Dataset
 **Role:** Dimas (Backend/ML Engineer) + PM
-**Status:** 🟢 SELESAI — Lolos QC 1 (28 Agustus 2026). Dokumen: `docs/dataset/dataset-decision.md`
+**Status:** 🟢 SELESAI — Keputusan dataset lolos QC 1 (28 Agustus 2026) DAN akuisisi fisik 6 dataset sudah dieksekusi (28 Agustus, setelah upgrade disk gateway 19GB→40GB). Dokumen: `docs/dataset/dataset-decision.md`
 
-- [ ] Analisis dataset kandidat: TACO (YOLO format), Garbage Classification v2, Waste Segregation Image Dataset
-- [ ] Tentukan skema label final: `ORGANIC` vs `NON_ORGANIC` (mapping dari kelas granular TACO ke 2 kelas utama)
-- [ ] Split dataset: train/val/test (mis. 70/20/10), stratified agar tidak overfitting ke satu kelas
-- [ ] Dokumentasi keputusan dataset di `docs/dataset-decision.md`
+- [x] Analisis dataset kandidat: TACO (YOLO format), Garbage Classification v2, Waste Segregation Image Dataset (+3 dataset tambahan, lihat dataset-decision.md §2)
+- [x] Tentukan skema label final: `ORGANIC` vs `NON_ORGANIC` (mapping dari kelas granular TACO ke 2 kelas utama) — `configs/label_mapping.yaml`
+- [x] Split dataset: strategi 70/15/15 stratified + group-aware + dedup pHash didefinisikan (`src/preprocessing/split_dataset.py`, Backlog 2) — **belum dieksekusi pada dataset asli** (baru diuji dgn data sintetik), menunggu EDA volume nyata
+- [x] Dokumentasi keputusan dataset di `docs/dataset/dataset-decision.md`
+- [x] **Akuisisi fisik 6 dataset dari Kaggle** (28 Agustus 2026, setelah disk gateway di-upgrade ke 40GB) — total **6.28GB terunduh**, diverifikasi nyata (bukan cuma exit code 0): struktur folder tiap dataset dicek sesuai ekspektasi dataset-decision.md, sample file gambar dibuka & valid (tidak corrupt) via PIL.
 
-**QC 1 (Sari):** Verifikasi tidak ada label leakage antar split, distribusi kelas seimbang (rasio didokumentasikan), sumber dataset punya lisensi yang boleh dipakai komersial/riset.
+**Hasil akuisisi (verifikasi nyata di `data/raw/`):**
+
+| Dataset | Ukuran | Jumlah File | Struktur Terverifikasi |
+|---|---|---|---|
+| `taco_yolo` | 266MB | 12.011 | train/valid/test, tiap split ada images/ + labels/ (YOLO txt) |
+| `taco_coco` | 2.9GB | 1.504 | `data/batch_1..15/` + `annotations.json` (COCO format) |
+| `garbage_classification_v2` | 1.2GB | 36.777 | folder per 10 kelas (trash, metal, plastic, cardboard, glass, biological, battery, paper, clothes, shoes), varian `original/` + `standardized_384/` |
+| `alistairking_recyclable_household` | 951MB | 15.001 | folder per kelas granular (plastic_trash_bags, food_waste, aluminum_cans, dst — 30 kelas) |
+| `waste_segregation_aashidutt3` | 1.3GB | 15.366 | `Dataset/train/` + `Dataset/val/`, tiap split ada `biodegradable/` & `non_biodegradable/` |
+| `realwaste` | 666MB | 4.753 | 9 folder kelas persis sesuai dataset-decision.md (Food Organics, Cardboard, Paper, Metal, Glass, Textile Trash, Miscellaneous Trash, Plastic, Vegetation) |
+| **TOTAL** | **~6.28GB** | **~85.412 file** | Disk gateway: 21GB terpakai / 38GB (54%), masih ada 18GB buffer aman |
+
+**QC 1 (Sari):** Verifikasi tidak ada label leakage antar split, distribusi kelas seimbang (rasio didokumentasikan), sumber dataset punya lisensi yang boleh dipakai komersial/riset. **Lolos untuk keputusan dataset (dokumen)**; verifikasi label leakage & distribusi kelas pada data FISIK yang baru diunduh **belum dilakukan** — itu scope EDA lanjutan (bagian dari Backlog 2, yang statusnya juga masih 🟡 menunggu EDA nyata + split eksekusi).
 
 ---
 
