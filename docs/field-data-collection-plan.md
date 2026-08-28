@@ -34,7 +34,7 @@ Berbeda dari pesan ke Pak Agus, pesan ini **harus detail dan jelas** karena maha
 >
 > **Cara Upload Foto (via Telegram, ±3 menit):**
 > 1. Buka Telegram (kalau belum punya, install dulu dari Play Store/App Store — gratis).
-> 2. Cari bot: **`@makerindobot`** (atau link yang dibagikan), tekan **Start/Mulai**.
+> 2. Cari bot: **`@bersekabot`**, tekan **Start/Mulai**.
 > 3. Ketik `/mulai`, lalu pilih nomor kelompok kalian dari daftar yang muncul (tinggal tap, tidak perlu ngetik).
 > 4. Pilih jenis tong yang mau difoto: **Organik** atau **Anorganik** (tap tombolnya).
 > 5. Foto tong sampah **dari ATAS** (tampak atas, tegak lurus), jarak sekitar 30-50 cm dari permukaan sampah, pastikan pencahayaan cukup dan tidak blur.
@@ -56,7 +56,7 @@ Berbeda dari pesan ke Pak Agus, pesan ini **harus detail dan jelas** karena maha
 
 ## Mekanisme Teknis di Balik Layar (Untuk Tim, Bukan Dikirim ke Mahasiswa)
 
-**Bot:** `@makerindobot` (akun bot yang sudah ada, dipakai ulang untuk fungsi baru — **terisolasi total dari Hermes Agent/gateway control**, murni relay foto→storage)
+**Bot:** `@bersekabot` (bot Telegram baru, dibuat khusus untuk pengumpulan data lapangan — **terisolasi total dari Hermes Agent/gateway control**, murni relay foto→storage. Berbeda dari akun GitHub bot `makerindobot` yang dipakai untuk commit kode.)
 
 - Bot berjalan sebagai proses terpisah (Node.js), tidak execute perintah apa pun ke sistem, tidak akses tools Hermes
 - Wizard: `/mulai` → pilih kelompok (1-32) → pilih jenis tong → kirim foto → konfirmasi otomatis
@@ -73,6 +73,6 @@ Berbeda dari pesan ke Pak Agus, pesan ini **harus detail dan jelas** karena maha
 | Tahap | Status |
 |-------|--------|
 | 1. Kirim pesan ke Pak Agus | ⏳ Draft siap, menunggu Daffa kirim |
-| 2. Bangun bot Telegram (isolated) | 🟡 Sedang dikerjakan Bayu (paralel) |
+| 2. Bangun & deploy bot Telegram (isolated) | 🟢 SELESAI — `@bersekabot` live di gateway, storage mode `local` (sementara, belum R2) |
 | 3. Kirim pesan ke mahasiswa | ⏳ Menunggu persetujuan Pak Agus |
 | 4. Pengumpulan foto 32 kelompok | ⏳ Menunggu tahap 3 |
