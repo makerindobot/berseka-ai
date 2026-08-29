@@ -45,6 +45,8 @@ Deadline ini SANGAT AGRESIF untuk scope penuh (dataset+training+backend+frontend
 
 **QC 1 (Sari):** Verifikasi tidak ada label leakage antar split, distribusi kelas seimbang (rasio didokumentasikan), sumber dataset punya lisensi yang boleh dipakai komersial/riset. **Lolos untuk keputusan dataset (dokumen)**; verifikasi label leakage & distribusi kelas pada data FISIK yang baru diunduh **belum dilakukan** — itu scope EDA lanjutan (bagian dari Backlog 2, yang statusnya juga masih 🟡 menunggu EDA nyata + split eksekusi).
 
+**🔴 RISIKO KRITIKAL ditemukan 28 Agustus 2026 (feedback Daffa): keenam dataset publik yang diunduh TIDAK SATU PUN dari Indonesia** — TACO dominan Eropa, RealWaste dari Australia, sisanya kompilasi Kaggle umum konteks Barat. Sampah organik Indonesia (kulit durian/rambutan/pisang, daun pisang) dan pola anorganik khas (sachet plastik, kresek) TIDAK terepresentasi. Riset tambahan mengonfirmasi **tidak ada dataset publik Indonesia yang siap pakai** (jurnal akademik Indonesia yang ada pun memakai dataset Kaggle generik yang sama). Detail lengkap & mitigasi: `docs/dataset/dataset-decision.md` §7 poin 3. **Implikasi: data lapangan Coblong (Backlog 3/collector-bot) BUKAN LAGI "nice to have" tapi BLOCKER JALUR KRITIS** — model yang dilatih murni dari dataset publik ini berisiko akurasi rendah di lapangan Coblong. Status data lapangan saat ini: **0 foto** (lihat Backlog 3 & `field-data-collection-plan.md`) — perlu percepatan aktif, bukan menunggu pasif.
+
 ---
 
 ## BACKLOG 2 — Arsitektur & Setup Training Pipeline (Kaggle)
