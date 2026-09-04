@@ -33,7 +33,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const { loadConfig } = require('./lib/config');
 const { createStorage } = require('./lib/storage');
-const { ManifestWriter } = require('./lib/manifest');
+const { ManifestWriter, TARGET_PER_GROUP_PER_TYPE } = require('./lib/manifest');
 
 const JENIS_TONG = {
   organik: { label: 'Organik', emoji: '🟢' },
@@ -95,6 +95,56 @@ function main() {
         'Silakan pilih nomor kelompok kalian:',
       { reply_markup: { inline_keyboard: rows }, parse_mode: 'Markdown' }
     );
+  });
+
+  bot.onText(/^\/progress$/, (msg) => {
+    const chatId = msg.chat.id;
+    const summary = manifest.getProgressSummaryAll ? manifest.getProgressSummaryAll() : manifest.getProgress();
+    if (!summary || Object.keys(summary).length === 0) {
+      bot.sendMessage(
+        chatId,
+        '📊 *Progress Pengumpulan Foto BERSEKA AI*\n\n' +
+          'Belum ada data yang terkumpul.',
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    let text = '📊 *Progress Pengumpulan Foto BERSEKA AI*\n' +
+      `Target per kelompok: ${TARGET_PER_GROUP_PER_TYPE} organik + ${TARGET_PER_GROUP_PER_TYPE} anorganik = ${TARGET_PER_GROUP_PER_TYPE * 2} total\n\n`;
+
+    // Urutkan berdasarkan total (descending)
+    const sorted = Object.values(summary).sort((a, b) => b.total - a.total);
+
+    for (const group of sorted) {
+      const orgPct = Math.round((group.organik / TARGET_PER_GROUP_PER_TYPE) * 100);
+      const anorgPct = Math.round((group.anorganik / TARGET_PER_GROUP_PER_TYPE) * 100);
+      const totalPct = Math.round((group.total / (TARGET_PER_GROUP_PER_TYPE * 2)) * 100);
+
+      const progressBar = (pct) => {
+        const filled = Math.min(Math.round(pct / 10), 10);
+        return '█'.repeat(filled) + '░'.repeat(10 - filled) + ` ${pct}%`;
+      };
+
+      text += `*${group.groupLabel}*\n`;
+      text += `  🟢 Organik: ${group.organik}/${TARGET_PER_GROUP_PER_TYPE} ${progressBar(orgPct)}\n`;
+      text += `  🔵 Anorganik: ${group.anorganik}/${TARGET_PER_GROUP_PER_TYPE} ${progressBar(anorgPct)}\n`;
+      text += `  📦 Total: ${group.total}/${TARGET_PER_GROUP_PER_TYPE * 2} (${totalPct}%)\n\n`;
+    }
+
+    // Ringkasan keseluruhan
+    const allOrg = Object.values(summary).reduce((sum, g) => sum + g.organik, 0);
+    const allAnorg = Object.values(summary).reduce((sum, g) => sum + g.anorganik, 0);
+    const allTotal = allOrg + allAnorg;
+    const allGroups = Object.keys(summary).length;
+
+    text += `---\n`;
+    text += `📈 *Ringkasan Keseluruhan*\n`;
+    text += `Kelompok aktif: ${allGroups}/32\n`;
+    text += `Total foto: ${allTotal}/${32 * TARGET_PER_GROUP_PER_TYPE * 2} (${Math.round((allTotal / (32 * TARGET_PER_GROUP_PER_TYPE * 2)) * 100)}%)\n`;
+    text += `🟢 Organik: ${allOrg} | 🔵 Anorganik: ${allAnorg}`;
+
+    bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
   });
 
   bot.on('callback_query', async (query) => {
@@ -222,10 +272,20 @@ function main() {
 
       manifest.append(metadata);
 
+      // Generate progress summary untuk balasan otomatis
+      const progress = manifest.getProgressSummary(session.groupId);
+
       await bot.sendMessage(
         chatId,
-        `✅ Foto tersimpan!\n\nKelompok: *${session.groupLabel}*\nJenis: *${JENIS_TONG[session.jenisTong].label}*\nWaktu: ${timestampWibDisplay} WIB\n\n` +
-          'Boleh kirim foto lagi (jenis tong yang sama), atau ketik /mulai untuk ganti kelompok/jenis.',
+        `✅ Foto tersimpan!\n\n` +
+          `Kelompok: *${session.groupLabel}*\n` +
+          `Jenis: *${JENIS_TONG[session.jenisTong].label}*\n` +
+          `Waktu: ${timestampWibDisplay} WIB\n\n` +
+          `📊 *Progress ${session.groupLabel}*\n` +
+          `🟢 Organik: ${progress.organik.count}/${TARGET_PER_GROUP_PER_TYPE} ${progress.organik.bar}\n` +
+          `🔵 Anorganik: ${progress.anorganik.count}/${TARGET_PER_GROUP_PER_TYPE} ${progress.anorganik.bar}\n` +
+          `📦 Total: ${progress.total.count}/${TARGET_PER_GROUP_PER_TYPE * 2} (${progress.total.pct}%)\n\n` +
+          'Boleh kirim foto lagi (jenis tong yang sama), atau ketik /mulai untuk ganti kelompok/jenis, atau /progress untuk lihat semua kelompok.',
         { parse_mode: 'Markdown' }
       );
     } catch (err) {
